@@ -108,7 +108,7 @@ def generate_temp_password():
         contraseña_encriptada = encrypt_password(password, ticket_key_desencriptado)
     
         body = {
-            "password": contraseña_encriptada,
+            "password": "1234567",
             "password_type": "ticket",
             "ticket_id": ticket_id,
             "effective_time": str(int(effective_time.timestamp())),
