@@ -54,7 +54,7 @@ arrayan_id = "ebe1294b3db744f4cdnkww"
 araucaria_id = "eb239c162bd8d0a036bivl"
 maiten_id = "ebbc95369829715271pjwv"
 maiten2_id = "eb3fca956ac0559b3bf41p"
-canelo_id = "eb2b767d79ec7b926am0pa""
+canelo_id = "eb2b767d79ec7b926am0pa"
 
 hora_efectiva = datetime.time(15, 0)  # 15:00 horas
 hora_invalida = datetime.time(14, 0)  # 14:00 horas
