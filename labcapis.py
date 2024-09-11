@@ -77,7 +77,7 @@ def generate_temp_password():
     invalid_time = invalid_date.replace(hour=hora_invalida.hour, minute=hora_invalida.minute)
     
     # Configuraciones id para las cabañas
-    if cabaña == "234":
+    if cabaña == "243":
         device_ids = [arrayan_id]
     elif cabaña == "244":
         device_ids = [araucaria_id]
