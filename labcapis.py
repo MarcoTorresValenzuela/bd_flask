@@ -77,9 +77,9 @@ def generate_temp_password():
     invalid_time = invalid_date.replace(hour=hora_invalida.hour, minute=hora_invalida.minute)
     
     # Configuraciones id para las cabañas
-    if cabaña == "131":
+    if cabaña == "234":
         device_ids = [arrayan_id]
-    elif cabaña == "132":
+    elif cabaña == "244":
         device_ids = [araucaria_id]
     elif cabaña == "2462":
         if personas == "0":
@@ -108,7 +108,7 @@ def generate_temp_password():
         contraseña_encriptada = encrypt_password(password, ticket_key_desencriptado)
     
         body = {
-            "password": "1234567",
+            "password": contraseña_encriptada,
             "password_type": "ticket",
             "ticket_id": ticket_id,
             "effective_time": str(int(effective_time.timestamp())),
