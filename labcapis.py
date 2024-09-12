@@ -1,5 +1,6 @@
 import os
 import datetime
+import time
 from flask import Flask, request, jsonify
 import requests
 import sib_api_v3_sdk
@@ -135,7 +136,9 @@ def generate_temp_password():
             responses.append({device_id: data_temp_pass})
         else:
             responses.append({device_id: {"error": "Failed to generate temporary password", "status_code": response_temp_pass.status_code}})
-
+            
+        time.sleep(8)
+        
     return jsonify(responses)  # Devolver todas las respuestas al final
 # Maneja solicitudes GET a la raíz de la aplicación
 @app.route('/', methods=['GET'])
