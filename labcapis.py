@@ -57,8 +57,8 @@ maiten_id = "ebbc95369829715271pjwv"
 maiten2_id = "eb3fca956ac0559b3bf41p"
 canelo_id = "eb2b767d79ec7b926am0pa"
 
-hora_efectiva = datetime.time(15, 0)  # 15:00 horas
-hora_invalida = datetime.time(14, 0)  # 14:00 horas
+hora_efectiva = datetime.time(19, 0)  # 15:00 horas
+hora_invalida = datetime.time(18, 0)  # 14:00 horas
 
 @app.route('/generate-temp-password', methods=['POST'])
 def generate_temp_password():
@@ -137,7 +137,7 @@ def generate_temp_password():
         else:
             responses.append({device_id: {"error": "Failed to generate temporary password", "status_code": response_temp_pass.status_code}})
             
-        time.sleep(8)
+        time.sleep(20)
         
     return jsonify(responses)  # Devolver todas las respuestas al final
 # Maneja solicitudes GET a la raíz de la aplicación
