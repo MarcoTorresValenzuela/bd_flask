@@ -13,9 +13,7 @@ app = Flask(__name__)
 def verificar_token():
     token_esperado = os.getenv('passkey')  # Reemplaza con tu token esperado
     token_recibido = request.headers.get('Authorization')
-    if token_recibido != token_esperado:
-        return False
-    return True
+    return token_recibido == token_esperado
 
 def enviar_mensaje(sender, recipient, content):
     configuration = sib_api_v3_sdk.Configuration()
@@ -32,10 +30,9 @@ def enviar_mensaje(sender, recipient, content):
 
 @app.route('/send_sms', methods=['POST'])
 def send_sms():
-    # Verificar si el token es válido
     if not verificar_token():
         return jsonify({'error': 'Unauthorized'}), 401
-     # Continuar con el envío de SMS
+    
     data = request.json
     sender = data.get('sender')
     recipient = data.get('recipient')
@@ -57,20 +54,19 @@ maiten_id = "ebbc95369829715271pjwv"
 maiten2_id = "eb3fca956ac0559b3bf41p"
 canelo_id = "eb2b767d79ec7b926am0pa"
 
-hora_efectiva = datetime.time(19, 0)  # 15:00 horas
-hora_invalida = datetime.time(18, 0)  # 14:00 horas
+hora_efectiva = datetime.time(19, 0)
+hora_invalida = datetime.time(18, 0)
 
 @app.route('/generate-temp-password', methods=['POST'])
 def generate_temp_password():
-    # Verificar si el token es válido
     if not verificar_token():
         return jsonify({'error': 'Unauthorized'}), 401
-    # Configuraciones para la clave de la puerta
+
     data = request.json
     name = data.get("name")
     password = data.get("password")
     cabaña = data.get("cabaña")
-    personas = data.get("personas")
+    personas = int(data.get("personas"))
     effective_date = datetime.datetime.strptime(data.get("effective_time"), "%d-%m-%Y")
     invalid_date = datetime.datetime.strptime(data.get("invalid_time"), "%d-%m-%Y")
 
@@ -84,19 +80,17 @@ def generate_temp_password():
         device_ids = [araucaria_id]
     elif cabaña == "2462":
         if personas == 1:
-            device_ids = [maiten2_id,maiten_id]
+            device_ids = [maiten_id, maiten2_id]
         else:
-            # Enviar a ambos dispositivos si personas es "1"
             device_ids = [maiten_id]
     elif cabaña == "2915":
         device_ids = [canelo_id]
     else:
         return jsonify({"error": "Invalid cabaña"}), 400
 
+    responses = []
 
-    # Preparacion para envio de contraseñas a tuyasmart
-
-    for device_id in device_ids:
+    def process_device(device_id):
         access_token, _ = get_access_token(client_id, secret)
         device_info = get_device_info(client_id, secret, access_token, device_id)
         local_key = device_info.get("local_key")
@@ -133,19 +127,22 @@ def generate_temp_password():
 
         if response_temp_pass.status_code == 200:
             data_temp_pass = response_temp_pass.json()
-            responses.append({device_id: data_temp_pass})
+            return {device_id: data_temp_pass}
         else:
-            responses.append({device_id: {"error": "Failed to generate temporary password", "status_code": response_temp_pass.status_code}})
-            
-        time.sleep(20)
-        
-    return jsonify(responses)  # Devolver todas las respuestas al final
-# Maneja solicitudes GET a la raíz de la aplicación
+            return {device_id: {"error": "Failed to generate temporary password", "status_code": response_temp_pass.status_code}}
+
+    for device_id in device_ids:
+        response = process_device(device_id)
+        responses.append(response)
+        # Si se quiere mantener un retraso, puede colocarse aquí, pero sin que interfiera con la iteración de dispositivos.
+        # Se debe tener en cuenta que un retraso general puede ser problemático si se requiere procesamiento concurrente.
+
+    return jsonify(responses)
+
 @app.route('/', methods=['GET'])
 def index():
     return '¡Bienvenido! Esta es una aplicación para enviar mensajes SMS y configurar puertas de seguridad.'
 
-# Maneja solicitudes GET a favicon.ico
 @app.route('/favicon.ico')
 def favicon():
     return '', 204
