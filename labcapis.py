@@ -95,18 +95,18 @@ def generate_temp_password():
 
     # Preparacion para envio de contraseñas a tuyasmart
 
-    for device_id in device_ids:   
+    for device_id in device_ids:
         access_token, _ = get_access_token(client_id, secret)
         device_info = get_device_info(client_id, secret, access_token, device_id)
         local_key = device_info.get("local_key")
-    
+
         temp_key_info = get_temp_key(client_id, secret, access_token, device_id)
         ticket_key = temp_key_info.get("ticket_key")
         ticket_id = temp_key_info.get("ticket_id")
-    
+
         ticket_key_desencriptado = decrypt_ticket_key(ticket_key, secret)
         contraseña_encriptada = encrypt_password(password, ticket_key_desencriptado)
-    
+
         body = {
             "password": contraseña_encriptada,
             "password_type": "ticket",
@@ -115,9 +115,9 @@ def generate_temp_password():
             "invalid_time": str(int(invalid_time.timestamp())),
             "name": name,
         }
-    
+
         sign_temp_pass, t_tp = calc_sign_t(client_id, secret, access_token, "POST", f"/v1.0/devices/{device_id}/door-lock/temp-password", body=body)
-    
+
         headers_temp_pass = {
             "time_zone": "America/Santiago",
             "client_id": client_id,
@@ -127,15 +127,16 @@ def generate_temp_password():
             "sign_method": "HMAC-SHA256",
             "access_token": access_token,
         }
-    
+
         response_temp_pass = requests.post(f"{url}/v1.0/devices/{device_id}/door-lock/temp-password", headers=headers_temp_pass, json=body)
-    
+
         if response_temp_pass.status_code == 200:
             data_temp_pass = response_temp_pass.json()
-            return jsonify(data_temp_pass)
+            responses.append({device_id: data_temp_pass})
         else:
-            return jsonify({"error": "Failed to generate temporary password"}), response_temp_pass.status_code
+            responses.append({device_id: {"error": "Failed to generate temporary password", "status_code": response_temp_pass.status_code}})
 
+    return jsonify(responses)  # Devolver todas las respuestas al final
 # Maneja solicitudes GET a la raíz de la aplicación
 @app.route('/', methods=['GET'])
 def index():
