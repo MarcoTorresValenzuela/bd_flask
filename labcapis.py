@@ -83,7 +83,7 @@ def generate_temp_password():
         device_ids = [araucaria_id]
     elif cabaña == "2462":
         if personas == 1:
-            device_ids = [maiten_id, maiten2_id]
+            device_ids = [maiten2_id,maiten_id]
         else:
             # Enviar a ambos dispositivos si personas es "1"
             device_ids = [maiten_id]
