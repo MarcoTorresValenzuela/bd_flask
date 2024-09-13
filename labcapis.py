@@ -1,8 +1,7 @@
 import os
 import datetime
-import time
-from flask import Flask, request, jsonify
 import requests
+from flask import Flask, request, jsonify
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 from utils import calc_sign, calc_sign_t, decrypt_ticket_key, encrypt_password, get_access_token, get_device_info, get_temp_key
@@ -57,6 +56,9 @@ canelo_id = "eb2b767d79ec7b926am0pa"
 hora_efectiva = datetime.time(19, 0)
 hora_invalida = datetime.time(18, 0)
 
+# Diccionario para almacenar los identificadores de solicitudes procesadas
+solicitudes_procesadas = {}
+
 @app.route('/generate-temp-password', methods=['POST'])
 def generate_temp_password():
     if not verificar_token():
@@ -69,6 +71,17 @@ def generate_temp_password():
     personas = int(data.get("personas"))
     effective_date = datetime.datetime.strptime(data.get("effective_time"), "%d-%m-%Y")
     invalid_date = datetime.datetime.strptime(data.get("invalid_time"), "%d-%m-%Y")
+    request_id = data.get("request_id")
+
+    if not request_id:
+        return jsonify({'error': 'request_id is required'}), 400
+
+    # Verificar si la solicitud ya fue procesada
+    if request_id in solicitudes_procesadas:
+        return jsonify({'error': 'Duplicate request'}), 400
+
+    # Registrar la solicitud como procesada
+    solicitudes_procesadas[request_id] = datetime.datetime.now()
 
     effective_time = effective_date.replace(hour=hora_efectiva.hour, minute=hora_efectiva.minute)
     invalid_time = invalid_date.replace(hour=hora_invalida.hour, minute=hora_invalida.minute)
@@ -134,8 +147,6 @@ def generate_temp_password():
     for device_id in device_ids:
         response = process_device(device_id)
         responses.append(response)
-        # Si se quiere mantener un retraso, puede colocarse aquí, pero sin que interfiera con la iteración de dispositivos.
-        # Se debe tener en cuenta que un retraso general puede ser problemático si se requiere procesamiento concurrente.
 
     return jsonify(responses)
 
@@ -150,3 +161,4 @@ def favicon():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
+
