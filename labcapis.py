@@ -1,4 +1,3 @@
-import threading
 import os
 import datetime
 import requests
@@ -9,58 +8,85 @@ from utils import calc_sign, calc_sign_t, decrypt_ticket_key, encrypt_password, 
 
 app = Flask(__name__)
 
-# Diccionario para almacenar solicitudes procesadas
-solicitudes_procesadas = {}
-
-# Crear un bloqueo para evitar concurrencias
-lock = threading.Lock()
-
-# Función para verificar token
+# Configuraciones para el primer código
 def verificar_token():
     token_esperado = os.getenv('passkey')  # Reemplaza con tu token esperado
     token_recibido = request.headers.get('Authorization')
     return token_recibido == token_esperado
 
-# Función para verificar duplicación por IP y request_id
-def es_solicitud_duplicada(ip, request_id, tipo_peticion):
-    clave = (ip, request_id, tipo_peticion)
-    return clave in solicitudes_procesadas
+def enviar_mensaje(sender, recipient, content):
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key['api-key'] = os.getenv('API_KEY')
 
-# Función para registrar la solicitud como procesada
-def registrar_solicitud_procesada(ip, request_id, tipo_peticion):
-    clave = (ip, request_id, tipo_peticion)
-    solicitudes_procesadas[clave] = datetime.datetime.now()
+    api_instance = sib_api_v3_sdk.TransactionalSMSApi(sib_api_v3_sdk.ApiClient(configuration))
+    send_transac_sms = sib_api_v3_sdk.SendTransacSms(sender=sender, recipient=recipient, content=content)
+
+    try:
+        api_response = api_instance.send_transac_sms(send_transac_sms)
+        return api_response.to_dict()
+    except ApiException as e:
+        return {'error': str(e)}
+
+@app.route('/send_sms', methods=['POST'])
+def send_sms():
+    if not verificar_token():
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.json
+    sender = data.get('sender')
+    recipient = data.get('recipient')
+    content = data.get('content')
+
+    if not sender or not recipient or not content:
+        return jsonify({'error': 'Missing data'}), 400
+
+    response = enviar_mensaje(sender, recipient, content)
+    return jsonify(response)
+
+# Configuraciones para el segundo código
+url = "https://openapi.tuyaus.com"
+client_id = "nnvgkh44nmp3d7myx5x5"
+secret = "ceef72f07adb416d9d0e2e1c8b0cfb5b"
+arrayan_id = "ebe1294b3db744f4cdnkww"
+araucaria_id = "eb239c162bd8d0a036bivl"
+maiten_id = "ebbc95369829715271pjwv"
+maiten2_id = "eb3fca956ac0559b3bf41p"
+canelo_id = "eb2b767d79ec7b926am0pa"
+
+hora_efectiva = datetime.time(19, 0)
+hora_invalida = datetime.time(18, 0)
+
+# Diccionario para almacenar los identificadores de solicitudes procesadas
+solicitudes_procesadas = {}
 
 @app.route('/generate-temp-password', methods=['POST'])
 def generate_temp_password():
     if not verificar_token():
         return jsonify({'error': 'Unauthorized'}), 401
 
-    ip_cliente = request.remote_addr  # Obtener la IP del cliente
     data = request.json
-    request_id = data.get("request_id")
     name = data.get("name")
     password = data.get("password")
     cabaña = data.get("cabaña")
     personas = int(data.get("personas"))
     effective_date = datetime.datetime.strptime(data.get("effective_time"), "%d-%m-%Y")
     invalid_date = datetime.datetime.strptime(data.get("invalid_time"), "%d-%m-%Y")
+    request_id = data.get("request_id")
 
     if not request_id:
         return jsonify({'error': 'request_id is required'}), 400
 
-    with lock:  # Bloquea la ejecución para evitar concurrencias
-        # Verificar si la solicitud ya fue procesada (basado en IP y request_id)
-        if es_solicitud_duplicada(ip_cliente, request_id, 'generate-temp-password'):
-            return jsonify({'error': 'Duplicate request'}), 400
+    # Verificar si la solicitud ya fue procesada
+    if request_id in solicitudes_procesadas:
+        return jsonify({'error': 'Duplicate request'}), 400
 
-        # Registrar la solicitud como procesada
-        registrar_solicitud_procesada(ip_cliente, request_id, 'generate-temp-password')
+    # Registrar la solicitud como procesada
+    solicitudes_procesadas[request_id] = datetime.datetime.now()
 
-    effective_time = effective_date.replace(hour=19, minute=0)  # Hora efectiva
-    invalid_time = invalid_date.replace(hour=18, minute=0)  # Hora inválida
-
-    # Configuración de IDs de cabañas
+    effective_time = effective_date.replace(hour=hora_efectiva.hour, minute=hora_efectiva.minute)
+    invalid_time = invalid_date.replace(hour=hora_invalida.hour, minute=hora_invalida.minute)
+    
+    # Configuraciones id para las cabañas
     if cabaña == "243":
         device_ids = [arrayan_id]
     elif cabaña == "244":
@@ -77,7 +103,6 @@ def generate_temp_password():
 
     responses = []
 
-    # Procesar cada dispositivo
     def process_device(device_id):
         access_token, _ = get_access_token(client_id, secret)
         device_info = get_device_info(client_id, secret, access_token, device_id)
@@ -125,7 +150,14 @@ def generate_temp_password():
 
     return jsonify(responses)
 
+@app.route('/', methods=['GET'])
+def index():
+    return '¡Bienvenido! Esta es una aplicación para enviar mensajes SMS y configurar puertas de seguridad.'
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
