@@ -8,12 +8,34 @@ from utils import calc_sign, calc_sign_t, decrypt_ticket_key, encrypt_password, 
 
 app = Flask(__name__)
 
+solicitudes_procesadas_sms = {}
+solicitudes_procesadas_tuya = {}
+TIEMPO_MINIMO_ENTRE_SOLICITUDES = 2
+
 # Configuraciones para el primer código
 def verificar_token():
     token_esperado = os.getenv('passkey')  # Reemplaza con tu token esperado
     token_recibido = request.headers.get('Authorization')
     return token_recibido == token_esperado
-
+    
+def validar_solicitud_repetida_sms(request_id):
+    now = time.time()
+    if request_id in solicitudes_procesadas_sms:
+        ultima_vez_procesada = solicitudes_procesadas_sms[request_id]
+        if now - ultima_vez_procesada < TIEMPO_MINIMO_ENTRE_SOLICITUDES:
+            return True  # La solicitud es repetida
+    solicitudes_procesadas_sms[request_id] = now  # Registrar la solicitud actual
+    return False
+    
+def validar_solicitud_repetida_tuya(request_id):
+    now = time.time()
+    if request_id in solicitudes_procesadas_tuya:
+        ultima_vez_procesada = solicitudes_procesadas_tuya[request_id]
+        if now - ultima_vez_procesada < TIEMPO_MINIMO_ENTRE_SOLICITUDES:
+            return True  # La solicitud es repetida
+    solicitudes_procesadas_tuya[request_id] = now  # Registrar la solicitud actual
+    return False
+    
 def enviar_mensaje(sender, recipient, content):
     configuration = sib_api_v3_sdk.Configuration()
     configuration.api_key['api-key'] = os.getenv('API_KEY')
@@ -31,11 +53,16 @@ def enviar_mensaje(sender, recipient, content):
 def send_sms():
     if not verificar_token():
         return jsonify({'error': 'Unauthorized'}), 401
+        
     
     data = request.json
     sender = data.get('sender')
     recipient = data.get('recipient')
     content = data.get('content')
+    request_id = data.get('request_id')
+
+    if validar_solicitud_repetida_sms(request_id):
+        return jsonify({'error': 'Duplicate request'}), 400
 
     if not sender or not recipient or not content:
         return jsonify({'error': 'Missing data'}), 400
@@ -73,15 +100,9 @@ def generate_temp_password():
     invalid_date = datetime.datetime.strptime(data.get("invalid_time"), "%d-%m-%Y")
     request_id = data.get("request_id")
 
-    if not request_id:
-        return jsonify({'error': 'request_id is required'}), 400
-
     # Verificar si la solicitud ya fue procesada
-    if request_id in solicitudes_procesadas:
+    if validar_solicitud_repetida_tuya(request_id):
         return jsonify({'error': 'Duplicate request'}), 400
-
-    # Registrar la solicitud como procesada
-    solicitudes_procesadas[request_id] = datetime.datetime.now()
 
     effective_time = effective_date.replace(hour=hora_efectiva.hour, minute=hora_efectiva.minute)
     invalid_time = invalid_date.replace(hour=hora_invalida.hour, minute=hora_invalida.minute)
