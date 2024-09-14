@@ -1,5 +1,6 @@
 import os
 import datetime
+import time
 import requests
 from flask import Flask, request, jsonify
 import sib_api_v3_sdk
@@ -10,7 +11,6 @@ app = Flask(__name__)
 
 solicitudes_procesadas_sms = {}
 solicitudes_procesadas_tuya = {}
-TIEMPO_MINIMO_ENTRE_SOLICITUDES = 2
 
 # Configuraciones para el primer código
 def verificar_token():
@@ -19,22 +19,20 @@ def verificar_token():
     return token_recibido == token_esperado
     
 def validar_solicitud_repetida_sms(request_id):
-    now = time.time()
     if request_id in solicitudes_procesadas_sms:
-        ultima_vez_procesada = solicitudes_procesadas_sms[request_id]
-        if now - ultima_vez_procesada < TIEMPO_MINIMO_ENTRE_SOLICITUDES:
-            return True  # La solicitud es repetida
-    solicitudes_procesadas_sms[request_id] = now  # Registrar la solicitud actual
+        return True  # La solicitud es repetida
+    # Registrar la solicitud actual
+    solicitudes_procesadas_sms[request_id] = True
+    return False
+
+def validar_solicitud_repetida_tuya(request_id):
+    # Comprobar si el request_id ya existe en el diccionario
+    if request_id in solicitudes_procesadas_sms:
+        return True  # La solicitud es repetida
+    # Registrar la solicitud actual
+    solicitudes_procesadas_sms[request_id] = True
     return False
     
-def validar_solicitud_repetida_tuya(request_id):
-    now = time.time()
-    if request_id in solicitudes_procesadas_tuya:
-        ultima_vez_procesada = solicitudes_procesadas_tuya[request_id]
-        if now - ultima_vez_procesada < TIEMPO_MINIMO_ENTRE_SOLICITUDES:
-            return True  # La solicitud es repetida
-    solicitudes_procesadas_tuya[request_id] = now  # Registrar la solicitud actual
-    return False
     
 def enviar_mensaje(sender, recipient, content):
     configuration = sib_api_v3_sdk.Configuration()
@@ -54,7 +52,6 @@ def send_sms():
     if not verificar_token():
         return jsonify({'error': 'Unauthorized'}), 401
         
-    
     data = request.json
     sender = data.get('sender')
     recipient = data.get('recipient')
