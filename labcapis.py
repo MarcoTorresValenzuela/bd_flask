@@ -20,6 +20,12 @@ def agregar_persona():
     
     return jsonify({"message": "Persona agregada exitosamente"}), 201
 
+
+
+@app.route('/favicon.ico')
+def favicon():
+    return '', 204
+    
 @app.route('/', methods=['GET'])
 def index():
     return '¡Bienvenido! Esta es una aplicación para agregar personas.'
